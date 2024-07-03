@@ -167,6 +167,9 @@ class Server(ModelMaintainer):
             参数: None
             返回: 选取的客户端类的引用
         """
+        if len([client for client in self.clients if client.clustered is False]) < self.args.num_per_round:
+            for client in self.clients:
+                client.clustered = False
         unclustered_clients = [client for client in self.clients if client.clustered is False]
         self.clients_this_round = sorted(random.sample(unclustered_clients, self.args.num_per_round))  # 选取客户端的类的应用
         self.cid_this_round = [client.client_id for client in self.clients_this_round]  # 选取客户端的id
@@ -273,6 +276,7 @@ class Server(ModelMaintainer):
         for cluster in self.clusters:
             SerializationTool.deserialize_model(cluster._model, self.model_parameters)
 
+
     def main(self):
         global_cluster_num = 0
         for round in range(self.args.com_round):
@@ -281,7 +285,7 @@ class Server(ModelMaintainer):
             self.args.exp_logger.info(
                 "Starting round {}/{}, client id this round {}".format(round, self.args.com_round, self.cid_this_round))
             self.getCluster()
-            for i in range(5):
+            for i in range(self.args.cluster_train_rounds):
                 for cluster in self.clusters:
                     cluster.train_in_cluster()
                 self.aggregators()
@@ -316,6 +320,7 @@ if __name__ == '__main__':
     parser.add_argument("--d", type=int, default=3)
     parser.add_argument("--b", type=int, default=5)
     parser.add_argument("--a", type=float, default=0.3)  # 个性化聚合参数
+    parser.add_argument("--cluster_train_rounds", type=int, default=5)  # 聚类训练轮数
 
     # anchor
     args = parser.parse_args()  # 解析参数
